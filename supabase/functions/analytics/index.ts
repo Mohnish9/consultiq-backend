@@ -35,13 +35,18 @@ const { count: totalSessions } = await query;
   if (!stats) {
     // Fallback: compute individually
     const [sessionsRes, consultantsRes, storageRes] = await Promise.all([
-      svc
-        .from("consultations")
-        .select("id, duration_minutes, status", { count: "exact" })
-        .is("deleted_at", null)
-        ...(profile.role === "consultant"
-          ? [["eq", "consultant_id", profile.id]]
-          : []),
+      (async () => {
+  let q = svc
+    .from("consultations")
+    .select("id, duration_minutes, status", { count: "exact" })
+    .is("deleted_at", null);
+
+  if (profile.role === "consultant") {
+    q = q.eq("consultant_id", profile.id);
+  }
+
+  return await q;
+})()
       profile.role === "admin"
         ? svc.from("consultants").select("id", { count: "exact" })
         : Promise.resolve({ count: 1 }),
