@@ -46,7 +46,7 @@ const { count: totalSessions } = await query;
   }
 
   return await q;
-})()
+})(),
       profile.role === "admin"
         ? svc.from("consultants").select("id", { count: "exact" })
         : Promise.resolve({ count: 1 }),
