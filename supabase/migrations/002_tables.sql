@@ -5,7 +5,7 @@
 -- ── Audit helper ────────────────────────────────────────────
 
 CREATE TABLE audit_log (
-  id            uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   table_name    text NOT NULL,
   record_id     uuid NOT NULL,
   operation     text NOT NULL,          -- INSERT | UPDATE | DELETE
@@ -21,7 +21,7 @@ CREATE INDEX idx_audit_changed_at   ON audit_log (changed_at DESC);
 -- ── users ───────────────────────────────────────────────────
 
 CREATE TABLE users (
-  id               uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   -- Mirrors auth.users.id so we can join on it
   auth_id          uuid UNIQUE,
   email            varchar(255) UNIQUE NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE patients (
 -- ── consultations ───────────────────────────────────────────
 
 CREATE TABLE consultations (
-  id               uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id       uuid NOT NULL REFERENCES patients (id),
   consultant_id    uuid NOT NULL REFERENCES consultants (id),
   date             date NOT NULL,
@@ -103,7 +103,7 @@ CREATE INDEX idx_consultations_notes_fts  ON consultations USING gin (to_tsvecto
 -- ── recordings ──────────────────────────────────────────────
 
 CREATE TABLE recordings (
-  id               uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   consultation_id  uuid NOT NULL REFERENCES consultations (id),
   patient_id       uuid NOT NULL REFERENCES patients (id),
   consultant_id    uuid NOT NULL REFERENCES consultants (id),
@@ -125,7 +125,7 @@ CREATE INDEX idx_recordings_consultant   ON recordings (consultant_id);
 -- ── transcripts ─────────────────────────────────────────────
 
 CREATE TABLE transcripts (
-  id               uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   consultation_id  uuid NOT NULL UNIQUE REFERENCES consultations (id),
   recording_id     uuid REFERENCES recordings (id),
   content          jsonb NOT NULL DEFAULT '[]',
@@ -144,7 +144,7 @@ CREATE INDEX idx_transcripts_content_fts
 -- ── ai_summaries ────────────────────────────────────────────
 
 CREATE TABLE ai_summaries (
-  id               uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   consultation_id  uuid NOT NULL UNIQUE REFERENCES consultations (id),
   patient_id       uuid NOT NULL REFERENCES patients (id),
   consultant_id    uuid NOT NULL REFERENCES consultants (id),
@@ -169,7 +169,7 @@ CREATE INDEX idx_ai_summaries_sentiment    ON ai_summaries (sentiment);
 -- ── recommendations ─────────────────────────────────────────
 
 CREATE TABLE recommendations (
-  id               uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id       uuid NOT NULL REFERENCES patients (id),
   consultation_id  uuid NOT NULL REFERENCES consultations (id),
   ai_summary_id    uuid REFERENCES ai_summaries (id),
@@ -189,7 +189,7 @@ CREATE INDEX idx_recommendations_completed    ON recommendations (completed);
 -- ── appointments ────────────────────────────────────────────
 
 CREATE TABLE appointments (
-  id               uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id       uuid NOT NULL REFERENCES patients (id),
   consultant_id    uuid NOT NULL REFERENCES consultants (id),
   consultation_id  uuid REFERENCES consultations (id),
@@ -213,7 +213,7 @@ CREATE INDEX idx_appointments_status       ON appointments (status);
 -- ── notifications ───────────────────────────────────────────
 
 CREATE TABLE notifications (
-  id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid NOT NULL REFERENCES users (id),
   type        varchar(100) NOT NULL,
   payload     jsonb NOT NULL DEFAULT '{}',
