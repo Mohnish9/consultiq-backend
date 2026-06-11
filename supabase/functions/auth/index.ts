@@ -64,7 +64,44 @@ router.post("/v1/auth/login", async (req) => {
     },
   });
 });
+// ── POST /auth/signup ───────────────────────────────────────
 
+router.post("/v1/auth/signup", async (req) => {
+  const {
+    email,
+    password,
+    name,
+    role = "patient",
+  } = await req.json();
+
+  if (!email || !password) {
+    return Errors.validation(
+      "email and password are required."
+    );
+  }
+
+  const anon = getAnonClient();
+
+  const { data, error } = await anon.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name,
+        role,
+      },
+    },
+  });
+
+  if (error) {
+    return Errors.validation(error.message);
+  }
+
+  return ok({
+    success: true,
+    user: data.user,
+  });
+});
 // ── POST /auth/logout ────────────────────────────────────────
 
 router.post("/v1/auth/logout", async (req) => {
