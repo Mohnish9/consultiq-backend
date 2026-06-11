@@ -17,12 +17,16 @@ router.get("/v1/analytics/summary", async (req) => {
   }
 
   // Total sessions
-  const { count: totalSessions } = await svc
-    .from("consultations")
-    .select("id", { count: "exact", head: true })
-    .is("deleted_at", null)
-    ...(profile.role === "consultant" ? [["eq", "consultant_id", profile.id]] : []);
+  let query = svc
+  .from("consultations")
+  .select("id", { count: "exact", head: true })
+  .is("deleted_at", null);
 
+if (profile.role === "consultant") {
+  query = query.eq("consultant_id", profile.id);
+}
+
+const { count: totalSessions } = await query;
   // Use raw SQL via RPC for complex aggregates
   const { data: stats } = await svc.rpc("get_analytics_summary", {
     p_consultant_id: profile.role === "consultant" ? profile.id : null,
