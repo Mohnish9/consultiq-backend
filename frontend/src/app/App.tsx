@@ -1,5 +1,6 @@
 import { useState } from "react";
-
+import { logout } from "./services/authService";
+import { useAuth } from "./context/AuthContext";
 // Layouts
 import { ConsultantLayout } from "./layouts/ConsultantLayout";
 import { PatientLayout } from "./layouts/PatientLayout";
@@ -34,7 +35,6 @@ import { PatientProfile } from "./pages/patient/PatientProfile";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 
 // Types & routes
-import type { UserRole } from "./types/user";
 import { CONSULTANT_ROUTES, PATIENT_ROUTES } from "./navigation/routes";
 
 // ── Route metadata ──────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ const PATIENT_ROUTE_META: Record<string, { title: string; subtitle?: string; ful
 // ── App ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [role, setRole] = useState<UserRole | null>(null);
+  const { role, isAuthenticated, isLoading } = useAuth();
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [consultantPage, setConsultantPage] = useState<string>(
   CONSULTANT_ROUTES.DASHBOARD
@@ -76,16 +76,10 @@ const [patientPage, setPatientPage] = useState<string>(
 );
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const handleLogin = (r: UserRole) => {
-    setRole(r);
-    setConsultantPage(CONSULTANT_ROUTES.DASHBOARD);
-    setPatientPage(PATIENT_ROUTES.DASHBOARD);
-  };
-
-  const handleLogout = () => {
-    setRole(null);
-    setDetailId(null);
-  };
+  const handleLogout = async () => {
+  await logout();
+  setDetailId(null);
+};
 
   const consultantNavigate = (target: string, id?: string) => {
     if (target === CONSULTANT_ROUTES.DETAIL && id) {
@@ -108,15 +102,17 @@ const [patientPage, setPatientPage] = useState<string>(
   };
 
   // ── Auth ──────────────────────────────────────────────────────────────────
-  if (!role) {
+  if (isLoading) {
+  return <div>Loading...</div>;
+  }
+  if (!isAuthenticated) {
     return (
       <ErrorBoundary>
         <AuthLayout>
   {authMode === "login" ? (
     <LoginPage
-      onLogin={handleLogin}
-      onSignupClick={() => setAuthMode("signup")}
-    />
+  onSignupClick={() => setAuthMode("signup")}
+/>
   ) : (
     <SignupPage
       onBackToLogin={() => setAuthMode("login")}

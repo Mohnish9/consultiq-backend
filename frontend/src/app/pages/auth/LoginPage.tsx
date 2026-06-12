@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 interface LoginPageProps {
-  onLogin: (role: "consultant" | "patient") => void;
   onSignupClick: () => void;
 }
 // ── Realistic screenshot mockups ──────────────────────────────────────────
@@ -465,7 +464,6 @@ const notifications = [
 ];
 
 export function LoginPage({
-  onLogin,
   onSignupClick,
 }: LoginPageProps) {
   const [role, setRole] = useState<"consultant" | "patient">("consultant");
@@ -499,7 +497,7 @@ export function LoginPage({
     );
 
     if (response.success) {
-      onLogin(role);
+      return;
     } else {
       alert("Login failed");
     }
