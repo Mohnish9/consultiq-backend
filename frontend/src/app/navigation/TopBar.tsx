@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Bell, Search, ChevronDown, Settings, LogOut } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 interface TopBarProps {
   title: string;
@@ -14,8 +15,9 @@ const notifications = [
   { id: 3, text: "Storage at 46 GB of 100 GB", time: "2h ago", unread: false },
   { id: 4, text: "Rohit Verma's transcript processing done", time: "5h ago", unread: false },
 ];
-
 export function TopBar({ title, subtitle, onNavigate, onLogout }: TopBarProps) {
+  const { user, shortName, avatarInitials } = useAuth();
+
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [notifs, setNotifs] = useState(notifications);
@@ -75,15 +77,23 @@ export function TopBar({ title, subtitle, onNavigate, onLogout }: TopBarProps) {
             onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }}
             className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-md hover:bg-muted transition-colors"
           >
-            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white" style={{ fontSize: "10px", fontWeight: 700 }}>AR</div>
-            <span className="text-foreground hidden sm:block" style={{ fontSize: "13px", fontWeight: 500 }}>Dr. Rajan</span>
+            <div className="w-6 h-6 rounded-full bg-primary flex items-center        justify-center text-white" style={{ fontSize: "10px", fontWeight: 700 }}>
+            {avatarInitials}
+            </div>
+           <span className="text-foreground hidden sm:block" style={{ fontSize: "13px", fontWeight: 500 }}>
+  {shortName}
+</span>
             <ChevronDown size={12} className="text-muted-foreground" />
           </button>
           {showProfile && (
             <div className="absolute right-0 top-10 w-48 bg-white rounded-xl border border-border shadow-lg py-1">
               <div className="px-3 py-2 border-b border-border mb-0.5">
-                <p className="text-foreground" style={{ fontSize: "12px", fontWeight: 600 }}>Dr. Arjun Rajan</p>
-                <p className="text-muted-foreground" style={{ fontSize: "11px" }}>arjun@consultiq.io</p>
+               <p className="text-foreground" style={{ fontSize: "12px", fontWeight: 600 }}>
+  {user?.name}
+</p>
+              <p className="text-muted-foreground" style={{ fontSize: "11px" }}>
+  {user?.email}
+</p>
               </div>
               <button onClick={() => { onNavigate("settings"); setShowProfile(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-foreground hover:bg-muted transition-colors" style={{ fontSize: "13px" }}>
                 <Settings size={13} className="text-muted-foreground" /> Settings

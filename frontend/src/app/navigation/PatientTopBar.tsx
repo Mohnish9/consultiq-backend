@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Bell, Search, ChevronDown, Settings, LogOut } from "lucide-react";
-
+import { useAuth } from "../context/AuthContext";
 interface PatientTopBarProps {
   title: string;
   subtitle?: string;
@@ -15,6 +15,8 @@ const notifications = [
 ];
 
 export function PatientTopBar({ title, subtitle, onNavigate, onLogout }: PatientTopBarProps) {
+  const { user, shortName, avatarInitials } = useAuth();
+
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [notifs, setNotifs] = useState(notifications);
@@ -61,16 +63,26 @@ export function PatientTopBar({ title, subtitle, onNavigate, onLogout }: Patient
         {/* Profile */}
         <div className="relative">
           <button onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }} className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg hover:bg-muted transition-colors">
-            <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center text-white" style={{ fontSize: "11px", fontWeight: 600 }}>PM</div>
-            <span className="text-sm text-foreground hidden sm:block" style={{ fontWeight: 500 }}>Priya Mehta</span>
+         <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center text-white" style={{ fontSize: "11px", fontWeight: 600 }}>
+  {avatarInitials}
+</div>
+           <span className="text-sm text-foreground hidden sm:block" style={{ fontWeight: 500 }}>
+  {shortName}
+</span>
             <ChevronDown size={13} className="text-muted-foreground" />
           </button>
           {showProfile && (
             <div className="absolute right-0 top-10 w-52 bg-white rounded-xl border border-border shadow-lg py-1.5">
               <div className="px-4 py-2 border-b border-border mb-1">
-                <p className="text-sm text-foreground" style={{ fontWeight: 500 }}>Priya Mehta</p>
-                <p className="text-xs text-muted-foreground">priya.mehta@email.com</p>
-                <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 text-xs" style={{ fontWeight: 500 }}>Patient</span>
+               <p className="text-sm text-foreground" style={{ fontWeight: 500 }}>
+  {user?.name}
+</p>
+               <p className="text-xs text-muted-foreground">
+  {user?.email}
+</p>
+                <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 text-xs" style={{ fontWeight: 500 }}>
+  {user?.role}
+</span>
               </div>
               <button onClick={() => { onNavigate("p-profile"); setShowProfile(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                 <Settings size={14} className="text-muted-foreground" /> Profile Settings

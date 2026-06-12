@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { Save, Eye, EyeOff, Camera } from "lucide-react";
 
 const sections = ["personal", "contact", "emergency", "notifications", "password"] as const;
@@ -13,14 +14,31 @@ const sectionLabels: Record<Section, string> = {
 };
 
 export function PatientProfile() {
+  const { user, avatarInitials } = useAuth();
   const [activeSection, setActiveSection] = useState<Section>("personal");
   const [saved, setSaved] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [profile, setProfile] = useState({
-    name: "Priya Mehta", dob: "1994-03-15", gender: "Female", bloodGroup: "O+",
-    email: "priya.mehta@email.com", phone: "+91 98765 43210", address: "204, Andheri West, Mumbai 400058",
-    emergencyName: "Rahul Mehta", emergencyRelation: "Spouse", emergencyPhone: "+91 91234 56789",
-  });
+  name: user?.name ?? "",
+  dob: "",
+  gender: "",
+  bloodGroup: "",
+  email: user?.email ?? "",
+  phone: "",
+  address: "",
+  emergencyName: "",
+  emergencyRelation: "",
+  emergencyPhone: "",
+});
+  useEffect(() => {
+  if (!user) return;
+
+  setProfile(prev => ({
+    ...prev,
+    name: user.name,
+    email: user.email,
+  }));
+}, [user]);
   const [notifSettings, setNotifSettings] = useState({
     appointmentReminder: true,
     newRecording: true,
@@ -60,14 +78,14 @@ export function PatientProfile() {
               {/* Avatar */}
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className="w-16 h-16 rounded-full bg-violet-600 flex items-center justify-center text-white" style={{ fontSize: "22px", fontWeight: 700 }}>PM</div>
+                  <div className="w-16 h-16 rounded-full bg-violet-600 flex items-center justify-center text-white" style={{ fontSize: "22px", fontWeight: 700 }}>{avatarInitials}</div>
                   <button className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-border shadow-sm flex items-center justify-center hover:bg-muted">
                     <Camera size={12} className="text-muted-foreground" />
                   </button>
                 </div>
                 <div>
                   <p className="text-sm text-foreground" style={{ fontWeight: 500 }}>{profile.name}</p>
-                  <p className="text-xs text-muted-foreground">Patient ID: PAT-00142</p>
+                  <p className="text-xs text-muted-foreground">ID: {user?.id}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

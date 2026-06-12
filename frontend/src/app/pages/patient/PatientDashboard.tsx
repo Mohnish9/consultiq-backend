@@ -26,7 +26,7 @@ export function PatientDashboard({ onNavigate }: PatientDashboardProps) {
       {/* Patient overview — compact info cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Next Appointment", value: "Jun 18", sub: "Dr. Arjun Rajan · 10:30 AM", icon: Calendar, color: "text-violet-600 bg-violet-50", page: "p-appointments" },
+          { label: "Next Appointment", value: "Jun 18", sub: "mohnishkaplish92 · 10:30 AM", icon: Calendar, color: "text-violet-600 bg-violet-50", page: "p-appointments" },
           { label: "Last Consultation", value: "Jun 11", sub: "Therapy · 52 min · Completed", icon: FileText, color: "text-blue-600 bg-blue-50", page: "p-consultations" },
           { label: "Latest Recording", value: "Available", sub: "consultation_jun11.mp3", icon: Mic2, color: "text-emerald-600 bg-emerald-50", page: "p-recordings" },
           { label: "Pending Actions", value: "5", sub: "3 high priority items", icon: Star, color: "text-amber-600 bg-amber-50", page: "p-recommendations" },

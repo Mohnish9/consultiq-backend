@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LayoutDashboard, FileText, Mic2, Sparkles, Star, Calendar, User, ChevronLeft, ChevronRight, LogOut, MessageSquare } from "lucide-react";
-
+import { useAuth } from "../context/AuthContext";
 interface PatientSidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
@@ -17,8 +17,8 @@ const navItems = [
   { id: "p-appointments", label: "Appointments", icon: Calendar },
   { id: "p-profile", label: "Profile Settings", icon: User },
 ];
-
 export function PatientSidebar({ currentPage, onNavigate, onLogout }: PatientSidebarProps) {
+  const { user, shortName } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (id: string) =>
@@ -65,8 +65,12 @@ export function PatientSidebar({ currentPage, onNavigate, onLogout }: PatientSid
       {!collapsed && (
         <div className="px-3 pb-2">
           <div className="px-2.5 py-2 rounded-md bg-violet-50 border border-violet-100">
-            <p className="text-violet-700" style={{ fontSize: "12px", fontWeight: 500 }}>Priya Mehta</p>
-            <p className="text-violet-500" style={{ fontSize: "11px" }}>PAT-00142</p>
+            <p className="text-violet-700" style={{ fontSize: "12px", fontWeight: 500 }}>
+  {shortName}
+</p>
+           <p className="text-violet-500" style={{ fontSize: "11px" }}>
+  {user?.id}
+</p>
           </div>
         </div>
       )}

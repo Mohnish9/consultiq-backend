@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { User, Bell, Shield, Database, Save, Camera, Eye, EyeOff } from "lucide-react";
-
+import { useAuth } from "../../context/AuthContext";
 const sections = [
   { id: "profile", label: "Profile", icon: User },
   { id: "notifications", label: "Notifications", icon: Bell },
@@ -8,19 +9,32 @@ const sections = [
   { id: "storage", label: "Storage", icon: Database },
 ];
 
+
 export function SettingsPage() {
+  const { user, avatarInitials } = useAuth();
   const [activeSection, setActiveSection] = useState("profile");
   const [saved, setSaved] = useState(false);
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [profile, setProfile] = useState({
-    name: "Dr. Arjun Rajan",
-    email: "arjun@consultpro.io",
-    phone: "+91 98765 43210",
-    specialty: "Clinical Psychology",
-    clinic: "Apollo Wellness Center",
-    bio: "Clinical psychologist with 12 years of experience in CBT and mindfulness-based therapy.",
-  });
+  name: user?.name ?? "",
+  email: user?.email ?? "",
+  phone: "",
+  specialty: "",
+  clinic: user?.organization ?? "",
+  bio: "",
+});
+
+useEffect(() => {
+  if (!user) return;
+
+  setProfile(prev => ({
+    ...prev,
+    name: user.name,
+    email: user.email,
+    clinic: user.organization ?? "",
+  }));
+}, [user]);
   const [notifSettings, setNotifSettings] = useState({
     newUpload: true,
     analysisReady: true,
@@ -78,7 +92,7 @@ export function SettingsPage() {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white" style={{ fontSize: "22px", fontWeight: 700 }}>
-                    AR
+                   {avatarInitials}
                   </div>
                   <button className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-border shadow-sm flex items-center justify-center hover:bg-muted transition-colors">
                     <Camera size={12} className="text-muted-foreground" />
