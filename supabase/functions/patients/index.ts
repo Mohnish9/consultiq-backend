@@ -108,21 +108,54 @@ router.get("/v1/appointments", async (req) => {
  
 router.post("/v1/appointments", async (req) => {
   const { profile, svc } = await requireRole(req, "consultant", "admin");
- 
+
   const body = await req.json();
-  const { patientId, consultantId, scheduledAt, durationMinutes, type, mode, notes } = body;
- 
+  const patientId = body.patientId ?? body.patient_id;
+  const requestedConsultantId = body.consultantId ?? body.consultant_id;
+  const consultantId = profile.role === "admin"
+    ? requestedConsultantId ?? profile.id
+    : profile.id;
+  const scheduledAt = body.scheduledAt ?? body.scheduled_at;
+  const durationMinutes = body.durationMinutes ?? body.duration_minutes ?? 60;
+  const { type, mode, notes } = body;
+
   if (!patientId || !scheduledAt) {
     return Errors.validation("patientId and scheduledAt are required.");
   }
- 
+
+  if (profile.role !== "admin" && requestedConsultantId && requestedConsultantId !== profile.id) {
+    return Errors.forbidden();
+  }
+
+  const { data: patient, error: patientErr } = await svc
+    .from("patients")
+    .select("id, users!inner(is_active, deleted_at)")
+    .eq("id", patientId)
+    .eq("users.is_active", true)
+    .is("users.deleted_at", null)
+    .maybeSingle();
+
+  if (patientErr) return Errors.internal(patientErr.message);
+  if (!patient) return Errors.notFound("Patient");
+
+  const { data: consultant, error: consultantErr } = await svc
+    .from("consultants")
+    .select("id, users!inner(is_active, deleted_at)")
+    .eq("id", consultantId)
+    .eq("users.is_active", true)
+    .is("users.deleted_at", null)
+    .maybeSingle();
+
+  if (consultantErr) return Errors.internal(consultantErr.message);
+  if (!consultant) return Errors.notFound("Consultant");
+
   const { data, error: dbErr } = await svc
     .from("appointments")
     .insert({
       patient_id: patientId,
-      consultant_id: consultantId ?? profile.id,
+      consultant_id: consultantId,
       scheduled_at: scheduledAt,
-      duration_minutes: durationMinutes ?? 60,
+      duration_minutes: durationMinutes,
       type,
       mode: mode ?? "Video",
       notes,
@@ -130,16 +163,16 @@ router.post("/v1/appointments", async (req) => {
     })
     .select()
     .single();
- 
+
   if (dbErr) return Errors.internal(dbErr.message);
- 
+
   // Reminder notification
   await svc.from("notifications").insert({
     user_id: patientId,
     type: "appointment.reminder",
     payload: { appointmentId: data.id, scheduledAt },
   });
- 
+
   return created(data);
 });
  
