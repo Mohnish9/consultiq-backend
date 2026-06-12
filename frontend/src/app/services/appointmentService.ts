@@ -1,35 +1,51 @@
-import { supabase } from "./supabase";
+import { apiClient } from "./apiClient";
+import { API_ENDPOINTS } from "./apiEndpoints";
+
+export interface Appointment {
+  id: string;
+  patient_id: string;
+  consultant_id: string;
+  consultation_id?: string | null;
+  scheduled_at: string;
+  duration_minutes: number;
+  type?: string | null;
+  mode: "Video" | "In-Person" | "Phone";
+  status: "upcoming" | "past" | "cancelled";
+  cancel_reason?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AppointmentListResponse {
+  data: Appointment[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
 export async function createAppointment(
   patientId: string,
-  consultantId: string,
-  scheduledAt: string
+  scheduledAt: string,
+  options: {
+    durationMinutes?: number;
+    type?: string;
+    mode?: Appointment["mode"];
+    notes?: string;
+  } = {}
 ) {
-  const { data, error } = await supabase
-    .from("appointments")
-    .insert({
-      patient_id: patientId,
-      consultant_id: consultantId,
-      scheduled_at: scheduledAt,
-      status: "upcoming",
-    })
-    .select();
-
-  if (error) throw error;
-
-  return data;
+  return apiClient.post<Appointment>(API_ENDPOINTS.APPOINTMENTS.CREATE, {
+    patientId,
+    scheduledAt,
+    ...options,
+  });
 }
 
-export async function getAppointmentsForPatient(
-  patientId: string
-) {
-  const { data, error } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("patient_id", patientId)
-    .order("scheduled_at", { ascending: true });
+export async function getAppointmentsForPatient(patientId: string) {
+  const params = new URLSearchParams({ patientId });
+  const response = await apiClient.get<AppointmentListResponse>(
+    `${API_ENDPOINTS.APPOINTMENTS.LIST}?${params.toString()}`
+  );
 
-  if (error) throw error;
-
-  return data;
+  return response.data;
 }

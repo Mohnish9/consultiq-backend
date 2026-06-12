@@ -7,6 +7,7 @@ import {
   ReactNode,
 } from "react";
 import { supabase } from "../services/supabase";
+import { getMe } from "../services/authService";
 import type { User, UserRole } from "../types/user";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,19 +86,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        const sbUser = session.user;
-        const name: string = sbUser.user_metadata?.name ?? sbUser.email?.split("@")[0] ?? "User";
-        const role: UserRole = sbUser.user_metadata?.role ?? "patient";
+        const publicUser = await getMe();
 
         if (mounted) {
-          setUser({
-            id: sbUser.id,
-            name,
-            email: sbUser.email ?? "",
-            role,
-            avatarInitials: getAvatarInitials(name),
-            organization: sbUser.user_metadata?.organization ?? "",
-          });
+          setUser(publicUser);
           setIsLoading(false);
         }
       } catch (err) {
@@ -119,19 +111,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        const sbUser = session.user;
-        const name: string = sbUser.user_metadata?.name ?? sbUser.email?.split("@")[0] ?? "User";
-        const role: UserRole = sbUser.user_metadata?.role ?? "patient";
-
-        setUser({
-          id: sbUser.id,
-          name,
-          email: sbUser.email ?? "",
-          role,
-          avatarInitials: getAvatarInitials(name),
-          organization: sbUser.user_metadata?.organization ?? "",
-        });
-        setIsLoading(false);
+        getMe()
+          .then((publicUser) => {
+            if (!mounted) return;
+            setUser(publicUser);
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.error("[AuthContext] Failed to load public profile:", err);
+            if (!mounted) return;
+            setUser(null);
+            setIsLoading(false);
+          });
       }
     );
 
