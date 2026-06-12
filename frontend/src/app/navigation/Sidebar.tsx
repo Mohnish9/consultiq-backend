@@ -14,6 +14,7 @@ const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "upload", label: "Upload", icon: Upload },
   { id: "consultations", label: "Consultations", icon: FileText },
+  { id: "appointments", label: "Appointments", icon: FileText },
   { id: "analytics", label: "Analytics", icon: BarChart2 },
   { id: "ai-insights", label: "AI Insights", icon: Sparkles },
   { id: "settings", label: "Settings", icon: Settings },

@@ -1,3 +1,4 @@
+import ConsultantAppointments from "./pages/consultant/ConsultantAppointments";
 import { useState } from "react";
 import { logout } from "./services/authService";
 import { useAuth } from "./context/AuthContext";
@@ -43,6 +44,7 @@ const CONSULTANT_ROUTE_META: Record<string, { title: string; subtitle?: string; 
   [CONSULTANT_ROUTES.DASHBOARD]:    { title: "Dashboard" },
   [CONSULTANT_ROUTES.UPLOAD]:       { title: "Upload Consultation" },
   [CONSULTANT_ROUTES.CONSULTATIONS]:{ title: "Consultations" },
+  [CONSULTANT_ROUTES.APPOINTMENTS]: { title: "Appointments" },
   [CONSULTANT_ROUTES.DETAIL]:       { title: "Consultation Details", fullHeight: true },
   [CONSULTANT_ROUTES.ANALYTICS]:    { title: "Analytics" },
   [CONSULTANT_ROUTES.AI_INSIGHTS]:  { title: "AI Insights", fullHeight: true },
@@ -172,6 +174,8 @@ const [patientPage, setPatientPage] = useState<string>(
           {consultantPage === CONSULTANT_ROUTES.ANALYTICS    && <AnalyticsPage />}
           {consultantPage === CONSULTANT_ROUTES.AI_INSIGHTS  && <ConsultationInsightsPage />}
           {consultantPage === CONSULTANT_ROUTES.TRANSCRIPT   && <TranscriptPage onNavigate={consultantNavigate} />}
+          {consultantPage === CONSULTANT_ROUTES.APPOINTMENTS &&
+          <ConsultantAppointments />}
           {consultantPage === CONSULTANT_ROUTES.SETTINGS     && <SettingsPage />}
         </ErrorBoundary>
       </ConsultantLayout>

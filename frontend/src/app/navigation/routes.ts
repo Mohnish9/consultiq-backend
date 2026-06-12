@@ -6,6 +6,7 @@ export const CONSULTANT_ROUTES = {
   DASHBOARD: "dashboard",
   UPLOAD: "upload",
   CONSULTATIONS: "consultations",
+  APPOINTMENTS: "appointments",
   DETAIL: "detail",
   ANALYTICS: "analytics",
   AI_INSIGHTS: "ai-insights",

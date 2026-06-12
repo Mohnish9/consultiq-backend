@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, Video, MapPin, Clock, RefreshCw, CheckCircle2, X } from "lucide-react";
-
+import { useEffect } from "react";
+import { getAppointmentsForPatient } from "../../services/appointmentService";
 const upcoming = [
   { id: "A-0024", consultant: "Dr. Arjun Rajan", specialty: "Clinical Psychology", type: "Therapy Session", date: "Jun 18, 2026", time: "10:30 AM", duration: "60 min", mode: "Video", status: "confirmed" },
   { id: "A-0025", consultant: "Dr. Sunita Patel", specialty: "General Medicine", type: "Follow-up Consultation", date: "Jun 25, 2026", time: "2:00 PM", duration: "30 min", mode: "In-person", status: "confirmed" },
@@ -15,6 +16,20 @@ const past = [
 ];
 
 export function PatientAppointments() {
+
+  const [appointments, setAppointments] = useState<any[]>([]);
+  console.log("appointments state =", appointments);
+
+useEffect(() => {
+  getAppointmentsForPatient(
+    "ce894a38-9b92-4727-9a4e-e27cdf880b2c"
+  )
+    .then((data) => {
+      console.log("Appointments:", data);
+      setAppointments(data || []);
+    })
+    .catch(console.error);
+}, []);
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
 
@@ -63,45 +78,16 @@ export function PatientAppointments() {
       </div>
 
       {tab === "upcoming" && (
-        <div className="space-y-3">
-          {upcoming.map(a => (
-            <div key={a.id} className="bg-white rounded-xl border border-border p-5 hover:shadow-sm transition-shadow">
-              <div className="flex items-start gap-4">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${a.mode === "Video" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"}`}>
-                  {a.mode === "Video" ? <Video size={20} /> : <MapPin size={20} />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-foreground" style={{ fontWeight: 600 }}>{a.type}</p>
-                      <p className="text-sm text-muted-foreground">{a.consultant} · {a.specialty}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground"><Calendar size={11} />{a.date}</span>
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock size={11} />{a.time} · {a.duration}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${a.mode === "Video" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"}`} style={{ fontWeight: 500 }}>{a.mode}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${a.status === "confirmed" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`} style={{ fontWeight: 500 }}>
-                          {a.status === "confirmed" ? "Confirmed" : "Tentative"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    {a.mode === "Video" && (
-                      <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs hover:bg-violet-700 transition-colors" style={{ fontWeight: 500 }}>
-                        <Video size={12} /> Join Session
-                      </button>
-                    )}
-                    <button onClick={() => setRescheduleId(a.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-muted transition-colors">
-                      <RefreshCw size={12} /> Reschedule
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
+  <div className="space-y-3">
+    {appointments.map((a) => (
+      <div key={a.id} className="p-4 border rounded">
+        <p>ID: {a.id}</p>
+        <p>Date: {a.scheduled_at}</p>
+        <p>Status: {a.status}</p>
+      </div>
+    ))}
+  </div>
+)}
       {tab === "past" && (
         <div className="bg-white rounded-xl border border-border overflow-hidden">
           <table className="w-full">
