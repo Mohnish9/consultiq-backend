@@ -24,6 +24,13 @@ const MOCK_USERS: Record<UserRole, User> = {
     role: "patient",
     avatarInitials: "PM",
   },
+  admin: {
+    id: "U-000",
+    name: "ConsultIQ Admin",
+    email: "admin@consultiq.io",
+    role: "admin",
+    avatarInitials: "CA",
+  },
 };
 
 export function useAuth(): UseAuthReturn {

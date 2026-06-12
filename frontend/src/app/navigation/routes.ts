@@ -2,6 +2,10 @@ export const AUTH_ROUTES = {
   LOGIN: "login",
 } as const;
 
+export const ADMIN_ROUTES = {
+  DASHBOARD: "admin-dashboard",
+} as const;
+
 export const CONSULTANT_ROUTES = {
   DASHBOARD: "dashboard",
   UPLOAD: "upload",
@@ -28,3 +32,5 @@ export const PATIENT_ROUTES = {
 
 export type ConsultantRoute = (typeof CONSULTANT_ROUTES)[keyof typeof CONSULTANT_ROUTES];
 export type PatientRoute = (typeof PATIENT_ROUTES)[keyof typeof PATIENT_ROUTES];
+
+export type AdminRoute = (typeof ADMIN_ROUTES)[keyof typeof ADMIN_ROUTES];

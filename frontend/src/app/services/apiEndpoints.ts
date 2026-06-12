@@ -42,6 +42,10 @@ export const API_ENDPOINTS = {
     CONSULTANT_ACTIVITY: "/analytics/consultant-activity",
     TYPE_DISTRIBUTION: "/analytics/type-distribution",
   },
+  NOTIFICATIONS: {
+    LIST: "/notifications",
+    MARK_READ: (id: string) => `/notifications/${id}/read`,
+  },
   APPOINTMENTS: {
     LIST: "/appointments",
     DETAIL: (id: string) => `/appointments/${id}`,

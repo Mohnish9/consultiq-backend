@@ -466,7 +466,7 @@ const notifications = [
 export function LoginPage({
   onSignupClick,
 }: LoginPageProps) {
-  const [role, setRole] = useState<"consultant" | "patient">("consultant");
+  const [role, setRole] = useState<"consultant" | "patient" | "admin">("consultant");
   const [email, setEmail] = useState("arjun@consultiq.io");
   const [password, setPassword] = useState("password");
   const [showPass, setShowPass] = useState(false);
@@ -479,9 +479,15 @@ export function LoginPage({
     return () => clearInterval(t);
   }, []);
 
-  const handleRoleSwitch = (r: "consultant" | "patient") => {
+  const handleRoleSwitch = (r: "consultant" | "patient" | "admin") => {
     setRole(r);
-    setEmail(r === "consultant" ? "arjun@consultiq.io" : "priya.mehta@email.com");
+    setEmail(
+      r === "consultant"
+        ? "arjun@consultiq.io"
+        : r === "patient"
+          ? "priya.mehta@email.com"
+          : "admin@consultiq.io"
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -499,7 +505,7 @@ export function LoginPage({
     if (response.success) {
       return;
     } else {
-      alert("Login failed");
+      alert(response.error ?? "Login failed");
     }
   } catch (err: any) {
     console.error(err);
@@ -533,12 +539,12 @@ export function LoginPage({
             Welcome back
           </h1>
           <p style={{ fontSize: "13.5px", color: "#6b7280", marginBottom: "24px" }}>
-            Sign in to your {role === "consultant" ? "consultant" : "patient"} portal.
+            Sign in to your {role} portal.
           </p>
 
           {/* Role toggle */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-3 shadow-inner">
-            {(["consultant", "patient"] as const).map(r => (
+            {(["consultant", "patient", "admin"] as const).map(r => (
               <button
                 key={r}
                 type="button"
@@ -556,8 +562,8 @@ export function LoginPage({
                   boxShadow: role === r ? "0 2px 8px rgba(79,70,229,0.3)" : "none",
                 }}
               >
-                {r === "consultant" ? <Stethoscope size={12} /> : <User size={12} />}
-                {r === "consultant" ? "Consultant" : "Patient"}
+                {r === "consultant" ? <Stethoscope size={12} /> : r === "admin" ? <ShieldCheck size={12} /> : <User size={12} />}
+                {r === "consultant" ? "Consultant" : r === "admin" ? "Admin" : "Patient"}
               </button>
             ))}
           </div>
@@ -570,7 +576,9 @@ export function LoginPage({
             <p style={{ fontSize: "12px", color: role === "consultant" ? "#4338ca" : "#6d28d9", lineHeight: 1.55 }}>
               {role === "consultant"
                 ? "Upload recordings, manage consultations, generate AI summaries, and access analytics."
-                : "Access recordings, view summaries, review transcripts, and follow care recommendations."}
+                : role === "admin"
+                  ? "Manage users, consultants, patients, and system-wide analytics."
+                  : "Access recordings, view summaries, review transcripts, and follow care recommendations."}
             </p>
           </div>
 
@@ -643,6 +651,10 @@ export function LoginPage({
               <div className="flex items-center gap-2">
                 <User size={10} className="text-violet-500" />
                 <code style={{ fontSize: "11px", color: "#7c3aed" }}>priya.mehta@email.com</code>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={10} className="text-emerald-500" />
+                <code style={{ fontSize: "11px", color: "#059669" }}>admin@consultiq.io</code>
               </div>
             </div>
           </div>

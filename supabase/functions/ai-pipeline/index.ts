@@ -15,7 +15,7 @@ interface PipelinePayload {
 async function generateTranscript(
   svc: ReturnType<typeof getServiceClient>,
   consultationId: string
-): Promise<{ lines: Array<{ ts: string; speaker: string; text: string }>; wordCount: number } | null> {
+): Promise<{ recordingId: string | null; lines: Array<{ ts: string; speaker: string; text: string }>; wordCount: number } | null> {
   // Get the recording for this consultation
   const { data: recording } = await svc
     .from("recordings")
@@ -31,7 +31,7 @@ async function generateTranscript(
       .select("content, word_count")
       .eq("consultation_id", consultationId)
       .single();
-    if (existing) return { lines: existing.content, wordCount: existing.word_count ?? 0 };
+    if (existing) return { recordingId: null, lines: existing.content, wordCount: existing.word_count ?? 0 };
     return null;
   }
 
@@ -40,6 +40,7 @@ async function generateTranscript(
     console.warn("OPENAI_API_KEY not set — using mock transcript");
     // Return mock for local dev
     return {
+      recordingId: recording.id,
       lines: [
         { ts: "00:00", speaker: "Consultant", text: "Good morning. How are you feeling today?" },
         { ts: "00:08", speaker: "Patient", text: "A bit better, thank you. The exercises have been helping." },
@@ -88,7 +89,7 @@ async function generateTranscript(
 
   const wordCount = whisperData.text?.split(/\s+/).length ?? 0;
 
-  return { lines, wordCount };
+  return { recordingId: recording.id, lines, wordCount };
 }
 
 async function generateAISummary(
@@ -268,6 +269,7 @@ Deno.serve(async (req) => {
       .upsert(
         {
           consultation_id: consultationId,
+          recording_id: transcriptResult.recordingId,
           content: transcriptResult.lines,
           word_count: transcriptResult.wordCount,
           language: "en",

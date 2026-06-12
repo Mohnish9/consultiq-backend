@@ -4,9 +4,25 @@ import { env } from "../config/env";
 import { MOCK_CONSULTATIONS } from "../utils/mockData";
 import type { Consultation } from "../types/consultation";
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface CreateConsultationInput {
+  patient_id: string;
+  date: string;
+  type?: string;
+  notes?: string;
+  duration_minutes?: number;
+}
+
 export async function getConsultations(): Promise<Consultation[]> {
   if (!env.IS_MOCK) {
-    return apiClient.get<Consultation[]>(API_ENDPOINTS.CONSULTATIONS.LIST);
+    const response = await apiClient.get<PaginatedResponse<Consultation>>(API_ENDPOINTS.CONSULTATIONS.LIST);
+    return response.data;
   }
   await new Promise(r => setTimeout(r, 300));
   return MOCK_CONSULTATIONS;
@@ -20,20 +36,23 @@ export async function getConsultationById(id: string): Promise<Consultation | nu
   return MOCK_CONSULTATIONS.find(c => c.id === id) ?? null;
 }
 
-export async function createConsultation(
-  data: Omit<Consultation, "id" | "lastUpdated" | "aiStatus" | "recordingStatus">,
-): Promise<Consultation> {
+export async function createConsultation(data: CreateConsultationInput): Promise<Consultation> {
   if (!env.IS_MOCK) {
     return apiClient.post<Consultation>(API_ENDPOINTS.CONSULTATIONS.CREATE, data);
   }
   await new Promise(r => setTimeout(r, 500));
   return {
-    ...data,
     id: `C-${1049 + Math.floor(Math.random() * 100)}`,
-    lastUpdated: new Date().toLocaleString(),
+    patient: data.patient_id,
+    consultant: "Current Consultant",
+    date: data.date,
+    type: data.type ?? "General",
+    duration: data.duration_minutes ? `${data.duration_minutes} min` : "Unknown",
+    status: "pending",
     aiStatus: "pending",
-    recordingStatus: "uploaded",
-  };
+    recordingStatus: "none",
+    lastUpdated: new Date().toLocaleString(),
+  } as Consultation;
 }
 
 export async function updateConsultation(id: string, data: Partial<Consultation>): Promise<Consultation> {

@@ -75,17 +75,45 @@ router.post("/v1/consultations", async (req) => {
   }
 
   const body = await req.json();
-  const { patient_id, consultant_id, date, type, notes, duration_minutes } = body;
+  const { patient_id, date, type, notes, duration_minutes } = body;
+  const requestedConsultantId = body.consultant_id;
+  const consultantId = profile.role === "admin" ? requestedConsultantId ?? profile.id : profile.id;
 
   if (!patient_id || !date) {
     return Errors.validation("patient_id and date are required.");
   }
 
+  if (profile.role !== "admin" && requestedConsultantId && requestedConsultantId !== profile.id) {
+    return Errors.forbidden();
+  }
+
+  const { data: patient, error: patientErr } = await svc
+    .from("patients")
+    .select("id, users!inner(is_active, deleted_at)")
+    .eq("id", patient_id)
+    .eq("users.is_active", true)
+    .is("users.deleted_at", null)
+    .maybeSingle();
+
+  if (patientErr) return Errors.internal(patientErr.message);
+  if (!patient) return Errors.notFound("Patient");
+
+  const { data: consultant, error: consultantErr } = await svc
+    .from("consultants")
+    .select("id, users!inner(is_active, deleted_at)")
+    .eq("id", consultantId)
+    .eq("users.is_active", true)
+    .is("users.deleted_at", null)
+    .maybeSingle();
+
+  if (consultantErr) return Errors.internal(consultantErr.message);
+  if (!consultant) return Errors.notFound("Consultant");
+
   const { data, error: dbErr } = await svc
     .from("consultations")
     .insert({
       patient_id,
-      consultant_id: consultant_id ?? profile.id,
+      consultant_id: consultantId,
       date,
       type,
       notes,
@@ -105,14 +133,18 @@ router.post("/v1/consultations", async (req) => {
 // ── GET /v1/consultations/:id ────────────────────────────────
 
 router.get("/v1/consultations/:id", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
 
-  const { data, error: dbErr } = await svc
+  let query = svc
     .from("consultations")
     .select(CONSULTATION_SELECT)
     .eq("id", id)
-    .is("deleted_at", null)
-    .single();
+    .is("deleted_at", null);
+
+  if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+  else if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+
+  const { data, error: dbErr } = await query.single();
 
   if (dbErr || !data) return Errors.notFound("Consultation");
   return ok(data);
@@ -134,11 +166,15 @@ router.put("/v1/consultations/:id", async (req, { id }) => {
     if (key in body) update[key] = body[key];
   }
 
-  const { data, error: dbErr } = await svc
+  let query = svc
     .from("consultations")
     .update(update)
     .eq("id", id)
-    .is("deleted_at", null)
+    .is("deleted_at", null);
+
+  if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+
+  const { data, error: dbErr } = await query
     .select(CONSULTATION_SELECT)
     .single();
 
@@ -165,7 +201,13 @@ router.delete("/v1/consultations/:id", async (req, { id }) => {
 // ── GET /v1/consultations/:id/recordings ────────────────────
 
 router.get("/v1/consultations/:id/recordings", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
+
+  let consultQuery = svc.from("consultations").select("id").eq("id", id).is("deleted_at", null);
+  if (profile.role === "consultant") consultQuery = consultQuery.eq("consultant_id", profile.id);
+  else if (profile.role === "patient") consultQuery = consultQuery.eq("patient_id", profile.id);
+  const { data: consult } = await consultQuery.maybeSingle();
+  if (!consult) return Errors.notFound("Consultation");
 
   const { data, error: dbErr } = await svc
     .from("recordings")
@@ -181,7 +223,13 @@ router.get("/v1/consultations/:id/recordings", async (req, { id }) => {
 // ── GET /v1/consultations/:id/transcript ────────────────────
 
 router.get("/v1/consultations/:id/transcript", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
+
+  let consultQuery = svc.from("consultations").select("id").eq("id", id).is("deleted_at", null);
+  if (profile.role === "consultant") consultQuery = consultQuery.eq("consultant_id", profile.id);
+  else if (profile.role === "patient") consultQuery = consultQuery.eq("patient_id", profile.id);
+  const { data: consult } = await consultQuery.maybeSingle();
+  if (!consult) return Errors.notFound("Consultation");
 
   const { data, error: dbErr } = await svc
     .from("transcripts")
@@ -204,14 +252,18 @@ router.get("/v1/consultations/:id/transcript", async (req, { id }) => {
 // ── GET /v1/consultations/:id/ai-summary ────────────────────
 
 router.get("/v1/consultations/:id/ai-summary", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
 
   // Check consultation's ai_status first
-  const { data: consult } = await svc
+  let consultQuery = svc
     .from("consultations")
     .select("ai_status")
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+
+  if (profile.role === "consultant") consultQuery = consultQuery.eq("consultant_id", profile.id);
+  else if (profile.role === "patient") consultQuery = consultQuery.eq("patient_id", profile.id);
+
+  const { data: consult } = await consultQuery.single();
 
   if (!consult) return Errors.notFound("Consultation");
 
@@ -243,6 +295,11 @@ router.post("/v1/consultations/:id/ai-summary", async (req, { id }) => {
   if (!["consultant", "admin"].includes(profile.role)) {
     return Errors.forbidden();
   }
+
+  let consultQuery = svc.from("consultations").select("id").eq("id", id).is("deleted_at", null);
+  if (profile.role === "consultant") consultQuery = consultQuery.eq("consultant_id", profile.id);
+  const { data: consult } = await consultQuery.maybeSingle();
+  if (!consult) return Errors.notFound("Consultation");
 
   // Mark as processing
   await svc

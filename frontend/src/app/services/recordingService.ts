@@ -9,7 +9,8 @@ export async function getRecordings(patientId?: string): Promise<Recording[]> {
     const path = patientId
       ? `${API_ENDPOINTS.RECORDINGS.LIST}?patientId=${patientId}`
       : API_ENDPOINTS.RECORDINGS.LIST;
-    return apiClient.get<Recording[]>(path);
+    const response = await apiClient.get<{ data: Recording[] }>(path);
+    return response.data;
   }
   await new Promise(r => setTimeout(r, 300));
   return MOCK_RECORDINGS;

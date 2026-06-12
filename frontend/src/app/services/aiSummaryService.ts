@@ -53,7 +53,8 @@ const MOCK_SUMMARIES: AISummary[] = [
 
 export async function getAISummaries(): Promise<AISummary[]> {
   if (!env.IS_MOCK) {
-    return apiClient.get<AISummary[]>(API_ENDPOINTS.AI_SUMMARIES.LIST);
+    const response = await apiClient.get<{ data: AISummary[] }>(API_ENDPOINTS.AI_SUMMARIES.LIST);
+    return response.data;
   }
   await new Promise(r => setTimeout(r, 300));
   return MOCK_SUMMARIES;

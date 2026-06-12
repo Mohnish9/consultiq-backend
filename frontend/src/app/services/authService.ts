@@ -1,12 +1,6 @@
 import type { User, UserRole } from "../types/user";
 import { supabase } from "./supabase";
 
-interface LoginRequest {
-  email: string;
-  password: string;
-  role: UserRole;
-}
-
 interface LoginResponse {
   success: boolean;
   user?: User;
@@ -14,28 +8,61 @@ interface LoginResponse {
   error?: string;
 }
 
-const MOCK_CREDENTIALS: Record<string, { password: string; user: User }> = {
-  "arjun@consultiq.io": {
-    password: "password",
-    user: { id: "U-001", name: "Dr. Arjun Rajan", email: "arjun@consultiq.io", role: "consultant", avatarInitials: "AR", organization: "Apollo Wellness" },
-  },
-  "priya.mehta@email.com": {
-    password: "password",
-    user: { id: "U-002", name: "Priya Mehta", email: "priya.mehta@email.com", role: "patient", avatarInitials: "PM" },
-  },
-};
+interface PublicUserRow {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar_initials: string | null;
+  consultants?: { organization: string | null } | null;
+}
+
+function getAvatarInitials(name: string): string {
+  if (!name?.trim()) return "US";
+  const parts = name.trim().split(/\s+/);
+  return (parts[0][0] + (parts[1]?.[0] ?? parts[0][1] ?? "")).toUpperCase();
+}
+
+function mapPublicUser(row: PublicUserRow): User {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    avatarInitials: row.avatar_initials ?? getAvatarInitials(row.name),
+    organization: row.consultants?.organization ?? undefined,
+  };
+}
+
+export async function getCurrentPublicUser(): Promise<User | null> {
+  const {
+    data: { user: authUser },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !authUser) return null;
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, email, role, avatar_initials, consultants(organization)")
+    .eq("auth_id", authUser.id)
+    .maybeSingle<PublicUserRow>();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return mapPublicUser(data);
+}
 
 export async function login(
   email: string,
   password: string,
-  role: UserRole
+  expectedRole: UserRole
 ): Promise<LoginResponse> {
-
-  const { data, error } =
-    await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
     return {
@@ -44,44 +71,58 @@ export async function login(
     };
   }
 
-  const user = data.user;
+  localStorage.setItem("ciq_token", data.session?.access_token ?? "");
 
-  localStorage.setItem(
-    "ciq_token",
-    data.session?.access_token ?? ""
-  );
+  try {
+    const publicUser = await getCurrentPublicUser();
 
-  return {
-    success: true,
-    token: data.session?.access_token,
-    user: {
-      id: user.id,
-      name: user.user_metadata?.name ?? "User",
-      email: user.email ?? "",
-      role: (user.user_metadata?.role ?? role) as UserRole,
-      avatarInitials: (
-        user.user_metadata?.name?.substring(0, 2) ?? "US"
-      ).toUpperCase(),
-    },
-  };
+    if (!publicUser) {
+      await supabase.auth.signOut();
+      localStorage.removeItem("ciq_token");
+      return {
+        success: false,
+        error: "Authenticated user is missing a public profile.",
+      };
+    }
+
+    if (publicUser.role !== expectedRole) {
+      await supabase.auth.signOut();
+      localStorage.removeItem("ciq_token");
+      return {
+        success: false,
+        error: `This account is registered as ${publicUser.role}. Please use the ${publicUser.role} login.`,
+      };
+    }
+
+    return {
+      success: true,
+      token: data.session?.access_token,
+      user: publicUser,
+    };
+  } catch (profileError: any) {
+    return {
+      success: false,
+      error: profileError?.message ?? "Failed to load user profile.",
+    };
+  }
 }
+
 export async function signup(
   email: string,
   password: string,
   name: string,
   role: UserRole
 ) {
-  const { data, error } =
-    await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          role,
-        },
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name,
+        role,
       },
-    });
+    },
+  });
 
   if (error) {
     throw error;
@@ -89,27 +130,12 @@ export async function signup(
 
   return data;
 }
+
 export async function logout(): Promise<void> {
   await supabase.auth.signOut();
   localStorage.removeItem("ciq_token");
-  return;
-  await new Promise(r => setTimeout(r, 200));
 }
 
 export async function getMe(): Promise<User | null> {
-  const {
-  data: { user },
-  } = await supabase.auth.getUser();
-
-if (!user) return null;
-
-return {
-  id: user.id,
-  name: user.user_metadata?.name ?? "User",
-  email: user.email ?? "",
-  role: user.user_metadata?.role ?? "patient",
-  avatarInitials: (
-    user.user_metadata?.name?.substring(0, 2) ?? "US"
-  ).toUpperCase(),
-};
+  return getCurrentPublicUser();
 }

@@ -150,7 +150,7 @@ router.post("/v1/recordings/upload", async (req) => {
   // Trigger transcription pipeline asynchronously
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  fetch(`${supabaseUrl}/functions/v1/transcription-pipeline`, {
+  fetch(`${supabaseUrl}/functions/v1/transcription`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${serviceKey}`,
@@ -169,14 +169,18 @@ router.post("/v1/recordings/upload", async (req) => {
 // ── GET /v1/recordings/:id ───────────────────────────────────
 
 router.get("/v1/recordings/:id", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
 
-  const { data, error: dbErr } = await svc
+  let query = svc
     .from("recordings")
     .select("*")
     .eq("id", id)
-    .is("deleted_at", null)
-    .single();
+    .is("deleted_at", null);
+
+  if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+  else if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+
+  const { data, error: dbErr } = await query.single();
 
   if (dbErr || !data) return Errors.notFound("Recording");
   return ok(data);
@@ -185,13 +189,17 @@ router.get("/v1/recordings/:id", async (req, { id }) => {
 // ── GET /v1/recordings/:id/signed-url ────────────────────────
 
 router.get("/v1/recordings/:id/signed-url", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
 
-  const { data: recording } = await svc
+  let query = svc
     .from("recordings")
     .select("storage_path, status")
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+
+  if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+  else if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+
+  const { data: recording } = await query.single();
 
   if (!recording) return Errors.notFound("Recording");
   if (recording.status !== "available") {
@@ -240,12 +248,24 @@ router.delete("/v1/recordings/:id", async (req, { id }) => {
 // ── GET /v1/recordings/:id/transcript ────────────────────────
 
 router.get("/v1/recordings/:id/transcript", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
+
+  let recordingQuery = svc
+    .from("recordings")
+    .select("id, consultation_id")
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  if (profile.role === "consultant") recordingQuery = recordingQuery.eq("consultant_id", profile.id);
+  else if (profile.role === "patient") recordingQuery = recordingQuery.eq("patient_id", profile.id);
+
+  const { data: recording } = await recordingQuery.maybeSingle();
+  if (!recording) return Errors.notFound("Recording");
 
   const { data, error: dbErr } = await svc
     .from("transcripts")
     .select("id, consultation_id, content, language, word_count, generated_at")
-    .eq("recording_id", id)
+    .eq("consultation_id", recording.consultation_id)
     .single();
 
   if (dbErr || !data) return Errors.notFound("Transcript");

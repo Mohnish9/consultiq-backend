@@ -108,21 +108,54 @@ router.get("/v1/appointments", async (req) => {
  
 router.post("/v1/appointments", async (req) => {
   const { profile, svc } = await requireRole(req, "consultant", "admin");
- 
+
   const body = await req.json();
-  const { patientId, consultantId, scheduledAt, durationMinutes, type, mode, notes } = body;
- 
+  const patientId = body.patientId ?? body.patient_id;
+  const requestedConsultantId = body.consultantId ?? body.consultant_id;
+  const consultantId = profile.role === "admin"
+    ? requestedConsultantId ?? profile.id
+    : profile.id;
+  const scheduledAt = body.scheduledAt ?? body.scheduled_at;
+  const durationMinutes = body.durationMinutes ?? body.duration_minutes ?? 60;
+  const { type, mode, notes } = body;
+
   if (!patientId || !scheduledAt) {
     return Errors.validation("patientId and scheduledAt are required.");
   }
- 
+
+  if (profile.role !== "admin" && requestedConsultantId && requestedConsultantId !== profile.id) {
+    return Errors.forbidden();
+  }
+
+  const { data: patient, error: patientErr } = await svc
+    .from("patients")
+    .select("id, users!inner(is_active, deleted_at)")
+    .eq("id", patientId)
+    .eq("users.is_active", true)
+    .is("users.deleted_at", null)
+    .maybeSingle();
+
+  if (patientErr) return Errors.internal(patientErr.message);
+  if (!patient) return Errors.notFound("Patient");
+
+  const { data: consultant, error: consultantErr } = await svc
+    .from("consultants")
+    .select("id, users!inner(is_active, deleted_at)")
+    .eq("id", consultantId)
+    .eq("users.is_active", true)
+    .is("users.deleted_at", null)
+    .maybeSingle();
+
+  if (consultantErr) return Errors.internal(consultantErr.message);
+  if (!consultant) return Errors.notFound("Consultant");
+
   const { data, error: dbErr } = await svc
     .from("appointments")
     .insert({
       patient_id: patientId,
-      consultant_id: consultantId ?? profile.id,
+      consultant_id: consultantId,
       scheduled_at: scheduledAt,
-      duration_minutes: durationMinutes ?? 60,
+      duration_minutes: durationMinutes,
       type,
       mode: mode ?? "Video",
       notes,
@@ -130,27 +163,31 @@ router.post("/v1/appointments", async (req) => {
     })
     .select()
     .single();
- 
+
   if (dbErr) return Errors.internal(dbErr.message);
- 
+
   // Reminder notification
   await svc.from("notifications").insert({
     user_id: patientId,
     type: "appointment.reminder",
     payload: { appointmentId: data.id, scheduledAt },
   });
- 
+
   return created(data);
 });
  
 router.get("/v1/appointments/:id", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
-  const { data, error: dbErr } = await svc
+  const { profile, svc } = await requireAuth(req);
+  let query = svc
     .from("appointments")
-    .select("*")
+    .select("*, patients!inner ( id, users!inner ( name, email, avatar_initials ) ), consultants!inner ( id, users!inner ( name, email, avatar_initials ) )")
     .eq("id", id)
-    .is("deleted_at", null)
-    .single();
+    .is("deleted_at", null);
+
+  if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+  else if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+
+  const { data, error: dbErr } = await query.single();
   if (dbErr || !data) return Errors.notFound("Appointment");
   return ok(data);
 });
@@ -162,10 +199,15 @@ router.put("/v1/appointments/:id", async (req, { id }) => {
   const update: Record<string, unknown> = {};
   for (const k of allowed) if (k in body) update[k] = body[k];
  
-  const { data, error: dbErr } = await svc
+  let query = svc
     .from("appointments")
     .update(update)
     .eq("id", id)
+    .is("deleted_at", null);
+
+  if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+
+  const { data, error: dbErr } = await query
     .select()
     .single();
  
@@ -174,13 +216,19 @@ router.put("/v1/appointments/:id", async (req, { id }) => {
 });
  
 router.post("/v1/appointments/:id/cancel", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
+  const { profile, svc } = await requireAuth(req);
   const { reason } = await req.json();
- 
-  const { data, error: dbErr } = await svc
+
+  let query = svc
     .from("appointments")
     .update({ status: "cancelled", cancel_reason: reason ?? null })
     .eq("id", id)
+    .is("deleted_at", null);
+
+  if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+  else if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+
+  const { data, error: dbErr } = await query
     .select()
     .single();
  
@@ -224,12 +272,16 @@ router.get("/v1/ai-summaries", async (req) => {
 });
  
 router.get("/v1/ai-summaries/:id", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
-  const { data, error: dbErr } = await svc
+  const { profile, svc } = await requireAuth(req);
+  let query = svc
     .from("ai_summaries")
     .select("*")
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+
+  if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+  else if (profile.role === "consultant") query = query.eq("consultant_id", profile.id);
+
+  const { data, error: dbErr } = await query.single();
   if (dbErr || !data) return Errors.notFound("AI Summary");
   return ok(data);
 });
@@ -248,6 +300,17 @@ router.get("/v1/recommendations", async (req) => {
     .is("deleted_at", null);
  
   if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+  else if (profile.role === "consultant") {
+    const { data: consultations, error: consultErr } = await svc
+      .from("consultations")
+      .select("id")
+      .eq("consultant_id", profile.id)
+      .is("deleted_at", null);
+    if (consultErr) return Errors.internal(consultErr.message);
+    const ids = (consultations ?? []).map((row) => row.id);
+    if (ids.length === 0) return ok([]);
+    query = query.in("consultation_id", ids);
+  }
  
   const patientId = url.searchParams.get("patientId");
   const consultationId = url.searchParams.get("consultationId");
@@ -279,6 +342,19 @@ router.post("/v1/recommendations", async (req) => {
     return Errors.validation("patientId, consultationId, category, and description are required.");
   }
  
+  let consultQuery = svc
+    .from("consultations")
+    .select("id, patient_id, consultant_id")
+    .eq("id", consultationId)
+    .eq("patient_id", patientId)
+    .is("deleted_at", null);
+
+  if (profile.role === "consultant") consultQuery = consultQuery.eq("consultant_id", profile.id);
+
+  const { data: consultation, error: consultationErr } = await consultQuery.maybeSingle();
+  if (consultationErr) return Errors.internal(consultationErr.message);
+  if (!consultation) return Errors.notFound("Consultation");
+
   const { data, error: dbErr } = await svc
     .from("recommendations")
     .insert({
@@ -296,12 +372,28 @@ router.post("/v1/recommendations", async (req) => {
 });
  
 router.patch("/v1/recommendations/:id/complete", async (req, { id }) => {
-  const { svc } = await requireAuth(req);
- 
-  const { data, error: dbErr } = await svc
+  const { profile, svc } = await requireAuth(req);
+
+  let query = svc
     .from("recommendations")
     .update({ completed: true, completed_at: new Date().toISOString() })
     .eq("id", id)
+    .is("deleted_at", null);
+
+  if (profile.role === "patient") query = query.eq("patient_id", profile.id);
+  else if (profile.role === "consultant") {
+    const { data: consultations, error: consultErr } = await svc
+      .from("consultations")
+      .select("id")
+      .eq("consultant_id", profile.id)
+      .is("deleted_at", null);
+    if (consultErr) return Errors.internal(consultErr.message);
+    const ids = (consultations ?? []).map((row) => row.id);
+    if (ids.length === 0) return Errors.notFound("Recommendation");
+    query = query.in("consultation_id", ids);
+  }
+
+  const { data, error: dbErr } = await query
     .select()
     .single();
  
@@ -309,5 +401,43 @@ router.patch("/v1/recommendations/:id/complete", async (req, { id }) => {
   return ok({ id: data.id, completed: true, completedAt: data.completed_at });
 });
  
+// ═══════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════
+
+router.get("/v1/notifications", async (req) => {
+  const { profile, svc } = await requireAuth(req);
+  const url = new URL(req.url);
+  const unreadOnly = url.searchParams.get("unreadOnly") === "true";
+
+  let query = svc
+    .from("notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (profile.role !== "admin") query = query.eq("user_id", profile.id);
+  if (unreadOnly) query = query.eq("read", false);
+
+  const { data, error: dbErr } = await query;
+  if (dbErr) return Errors.internal(dbErr.message);
+  return ok(data ?? []);
+});
+
+router.patch("/v1/notifications/:id/read", async (req, { id }) => {
+  const { profile, svc } = await requireAuth(req);
+
+  let query = svc
+    .from("notifications")
+    .update({ read: true })
+    .eq("id", id);
+
+  if (profile.role !== "admin") query = query.eq("user_id", profile.id);
+
+  const { data, error: dbErr } = await query.select().single();
+  if (dbErr || !data) return Errors.notFound("Notification");
+  return ok(data);
+});
+
 Deno.serve((req) => router.dispatch(req));
  

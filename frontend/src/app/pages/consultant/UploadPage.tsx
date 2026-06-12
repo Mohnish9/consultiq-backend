@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { Upload, FileAudio, FileVideo, X, CheckCircle2, AlertCircle, Cloud } from "lucide-react";
-import { CONSULTATION_TYPES, CONSULTANTS } from "../../utils/constants";
+import { CONSULTATION_TYPES } from "../../utils/constants";
+import { createConsultation } from "../../services/consultationService";
+import { uploadRecording } from "../../services/recordingService";
 
 interface UploadPageProps {
   onNavigate: (page: string) => void;
@@ -15,9 +17,8 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
   const [toast, setToast] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
-    patient: "",
-    consultant: CONSULTANTS[0],
-    date: "2026-06-11",
+    patientId: "",
+    date: new Date().toISOString().slice(0, 10),
     type: CONSULTATION_TYPES[0],
     notes: "",
   });
@@ -44,22 +45,30 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
     if (f) handleFile(f);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) { setToast("Please attach a recording file."); setTimeout(() => setToast(null), 3000); return; }
-    if (!form.patient.trim()) { setToast("Patient name is required."); setTimeout(() => setToast(null), 3000); return; }
-    setUploading(true);
-    const interval = setInterval(() => {
-      setUploadProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setUploading(false);
-          setUploadDone(true);
-          return 100;
-        }
-        return p + 8;
+    if (!form.patientId.trim()) { setToast("Patient public profile ID is required."); setTimeout(() => setToast(null), 3000); return; }
+
+    try {
+      setUploading(true);
+      setUploadProgress(20);
+      const consultation = await createConsultation({
+        patient_id: form.patientId.trim(),
+        date: form.date,
+        type: form.type,
+        notes: form.notes,
       });
-    }, 180);
+      setUploadProgress(55);
+      await uploadRecording(file, consultation.id);
+      setUploadProgress(100);
+      setUploadDone(true);
+    } catch (err: any) {
+      setToast(err?.message ?? "Upload failed.");
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const isAudio = file?.type.startsWith("audio/");
@@ -73,13 +82,13 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
           </div>
           <h2 className="text-foreground mb-2" style={{ fontWeight: 600 }}>Upload Successful!</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            The consultation recording for <strong>{form.patient}</strong> has been uploaded and is being processed.
+            The consultation recording for <strong>{form.patientId}</strong> has been uploaded and is being processed.
           </p>
           <div className="space-y-2">
             <button onClick={() => onNavigate("consultations")} className="w-full py-2.5 rounded-lg bg-primary text-white text-sm" style={{ fontWeight: 500 }}>
               View All Consultations
             </button>
-            <button onClick={() => { setUploadDone(false); setFile(null); setUploadProgress(0); setForm({ ...form, patient: "", notes: "" }); }} className="w-full py-2.5 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => { setUploadDone(false); setFile(null); setUploadProgress(0); setForm({ ...form, patientId: "", notes: "" }); }} className="w-full py-2.5 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">
               Upload Another
             </button>
           </div>
@@ -103,23 +112,13 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
           <h3 className="text-sm text-foreground mb-4" style={{ fontWeight: 600 }}>Consultation Details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1.5" style={{ fontWeight: 500 }}>Patient Name *</label>
+              <label className="block text-xs text-muted-foreground mb-1.5" style={{ fontWeight: 500 }}>Patient Public Profile ID *</label>
               <input
-                value={form.patient}
-                onChange={e => setForm({ ...form, patient: e.target.value })}
+                value={form.patientId}
+                onChange={e => setForm({ ...form, patientId: e.target.value })}
                 className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                placeholder="e.g. Priya Mehta"
+                placeholder="patients.id / public.users.id"
               />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1.5" style={{ fontWeight: 500 }}>Consultant *</label>
-              <select
-                value={form.consultant}
-                onChange={e => setForm({ ...form, consultant: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              >
-                {CONSULTANTS.map(c => <option key={c}>{c}</option>)}
-              </select>
             </div>
             <div>
               <label className="block text-xs text-muted-foreground mb-1.5" style={{ fontWeight: 500 }}>Consultation Date</label>

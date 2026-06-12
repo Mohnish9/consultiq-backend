@@ -20,6 +20,7 @@ import { AnalyticsPage } from "./pages/consultant/AnalyticsPage";
 import { ConsultationInsightsPage } from "./pages/consultant/ConsultationInsightsPage";
 import { TranscriptPage } from "./pages/consultant/TranscriptPage";
 import { SettingsPage } from "./pages/consultant/SettingsPage";
+import { AdminDashboard } from "./pages/admin/AdminDashboard";
 
 // Patient pages
 import { PatientDashboard } from "./pages/patient/PatientDashboard";
@@ -36,7 +37,7 @@ import { PatientProfile } from "./pages/patient/PatientProfile";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 
 // Types & routes
-import { CONSULTANT_ROUTES, PATIENT_ROUTES } from "./navigation/routes";
+import { ADMIN_ROUTES, CONSULTANT_ROUTES, PATIENT_ROUTES } from "./navigation/routes";
 
 // ── Route metadata ──────────────────────────────────────────────────────────
 
@@ -152,6 +153,27 @@ const [patientPage, setPatientPage] = useState<string>(
         </PatientLayout>
       </ErrorBoundary>
     );
+  }
+
+  // ── Admin portal ──────────────────────────────────────────────────────────
+  if (role === "admin") {
+    return (
+      <ErrorBoundary>
+        <ConsultantLayout
+          currentPage={ADMIN_ROUTES.DASHBOARD}
+          title="Admin Dashboard"
+          onNavigate={() => undefined}
+          onLogout={handleLogout}
+        >
+          <AdminDashboard />
+        </ConsultantLayout>
+      </ErrorBoundary>
+    );
+  }
+
+  if (role !== "consultant") {
+    void handleLogout();
+    return <div>Unauthorized role.</div>;
   }
 
   // ── Consultant portal ─────────────────────────────────────────────────────
