@@ -7,6 +7,7 @@ import { AuthLayout } from "./layouts/AuthLayout";
 
 // Auth
 import { LoginPage } from "./pages/auth/LoginPage";
+import { SignupPage } from "./pages/auth/SignupPage";
 
 // Consultant pages
 import { DashboardPage } from "./pages/consultant/DashboardPage";
@@ -65,8 +66,14 @@ const PATIENT_ROUTE_META: Record<string, { title: string; subtitle?: string; ful
 
 export default function App() {
   const [role, setRole] = useState<UserRole | null>(null);
-  const [consultantPage, setConsultantPage] = useState(CONSULTANT_ROUTES.DASHBOARD);
-  const [patientPage, setPatientPage] = useState(PATIENT_ROUTES.DASHBOARD);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [consultantPage, setConsultantPage] = useState<string>(
+  CONSULTANT_ROUTES.DASHBOARD
+);
+
+const [patientPage, setPatientPage] = useState<string>(
+  PATIENT_ROUTES.DASHBOARD
+);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const handleLogin = (r: UserRole) => {
@@ -105,8 +112,17 @@ export default function App() {
     return (
       <ErrorBoundary>
         <AuthLayout>
-          <LoginPage onLogin={handleLogin} />
-        </AuthLayout>
+  {authMode === "login" ? (
+    <LoginPage
+      onLogin={handleLogin}
+      onSignupClick={() => setAuthMode("signup")}
+    />
+  ) : (
+    <SignupPage
+      onBackToLogin={() => setAuthMode("login")}
+    />
+  )}
+</AuthLayout>
       </ErrorBoundary>
     );
   }

@@ -11,8 +11,8 @@ import {
 
 interface LoginPageProps {
   onLogin: (role: "consultant" | "patient") => void;
+  onSignupClick: () => void;
 }
-
 // ── Realistic screenshot mockups ──────────────────────────────────────────
 
 function ScreenDashboard() {
@@ -464,7 +464,10 @@ const notifications = [
   { text: "Follow-up due tomorrow", sub: "Priya Mehta · 10:00 AM", icon: Bell, bg: "rgba(217,119,6,0.15)", color: "#fcd34d" },
 ];
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({
+  onLogin,
+  onSignupClick,
+}: LoginPageProps) {
   const [role, setRole] = useState<"consultant" | "patient">("consultant");
   const [email, setEmail] = useState("arjun@consultiq.io");
   const [password, setPassword] = useState("password");
@@ -620,6 +623,15 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 : <>Sign in <ArrowRight size={14} /></>}
             </button>
+            <div className="mt-4 text-center">
+              <button
+              type="button"
+               onClick={onSignupClick}
+                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+               >
+                Create Account
+              </button>
+            </div>
           </form>
 
           {/* Demo credentials */}
