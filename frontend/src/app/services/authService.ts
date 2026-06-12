@@ -14,16 +14,6 @@ interface LoginResponse {
   error?: string;
 }
 
-const MOCK_CREDENTIALS: Record<string, { password: string; user: User }> = {
-  "arjun@consultiq.io": {
-    password: "password",
-    user: { id: "U-001", name: "Dr. Arjun Rajan", email: "arjun@consultiq.io", role: "consultant", avatarInitials: "AR", organization: "Apollo Wellness" },
-  },
-  "priya.mehta@email.com": {
-    password: "password",
-    user: { id: "U-002", name: "Priya Mehta", email: "priya.mehta@email.com", role: "patient", avatarInitials: "PM" },
-  },
-};
 
 export async function login(
   email: string,
